@@ -22,15 +22,27 @@ def subscribe(data, conn):
         topics[data['topic']].add(conn)
 
 
+def unsubscribe(data, conn):
+    topics[data['topic']].remove(conn)
+
+
+def message(data, conn):
+    [sub.send(data) for sub in topics[data['topic']]]
+
+
+def add_connection(data, conn):
+    connections.append(data['conn'])
+
+
 def pubsub_server(conn: Connection) -> None:
     connections.append(conn)
 
     funcs: Dict[Text, Callable] = {
-        'message': lambda data, conn: [sub.send(data) for sub in topics[data['topic']]],
+        'message': message,
         'subscribe': subscribe,
-        'unsubscribe': lambda data, conn: topics[data['topic']].remove(conn),
+        'unsubscribe': unsubscribe,
         'close': close,
-        'add_connection': lambda data, conn: connections.append(data['conn'])
+        'add_connection': add_connection
     }
 
     while True:
