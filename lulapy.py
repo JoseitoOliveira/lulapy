@@ -34,7 +34,7 @@ def add_connection(data, conn):
     connections.append(data['conn'])
 
 
-def pubsub_server(conn: Connection) -> None:
+def lulapy_server(conn: Connection) -> None:
     connections.append(conn)
 
     funcs: Dict[Text, Callable] = {
@@ -63,13 +63,13 @@ def pubsub_server(conn: Connection) -> None:
                 funcs[_type](data, conn)
 
 
-def create_pubsub_server():
+def begin():
     parent_conn, child_conn = Pipe()
-    Process(target=pubsub_server, args=(parent_conn,)).start()
-    return PubSub_Client(child_conn)
+    Process(target=lulapy_server, args=(parent_conn,)).start()
+    return LulaPy_Client(child_conn)
 
 
-class PubSub_Client:
+class LulaPy_Client:
     def __init__(self, conn: Connection) -> None:
         self.conn = conn
 
@@ -79,7 +79,7 @@ class PubSub_Client:
             'type': 'add_connection',
             'conn': parent_conn
         })
-        return PubSub_Client(child_conn)
+        return LulaPy_Client(child_conn)
 
     def subscibe(self, topic: Text) -> None:
         self.conn.send({
