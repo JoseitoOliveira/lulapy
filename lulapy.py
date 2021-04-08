@@ -6,31 +6,33 @@ connections: List[Connection] = list()
 topics: Dict[Any, Set[Connection]] = dict()
 
 
-def close(data, conn):
+def close(data, conn: Connection):
     connections.remove(conn)
     for topic in topics.keys():
-        topics[topic].remove(conn)
+        if conn in topics[topic]:
+            topics[topic].remove(conn)
 
     if not conn.closed:
         conn.close()
 
 
-def subscribe(data, conn):
+def subscribe(data, conn: Connection):
     if data['topic'] not in topics:
         topics[data['topic']] = {conn}
     else:
         topics[data['topic']].add(conn)
 
 
-def unsubscribe(data, conn):
+def unsubscribe(data, conn: Connection):
     topics[data['topic']].remove(conn)
 
 
-def message(data, conn):
-    [sub.send(data) for sub in topics[data['topic']]]
+def message(data, conn: Connection):
+    if data['topic'] in topics:
+        [sub.send(data) for sub in topics[data['topic']]]
 
 
-def add_connection(data, conn):
+def add_connection(data, conn: Connection):
     connections.append(data['conn'])
 
 
@@ -65,7 +67,10 @@ def lulapy_server(conn: Connection) -> None:
 
 def begin():
     parent_conn, child_conn = Pipe()
-    Process(target=lulapy_server, args=(parent_conn,)).start()
+    broker = Process(target=lulapy_server, args=(parent_conn,))
+    broker.start()
+    while not broker.is_alive():
+        pass
     return LulaPy_Client(child_conn)
 
 
@@ -81,15 +86,15 @@ class LulaPy_Client:
         })
         return LulaPy_Client(child_conn)
 
-    def subscibe(self, topic: Text) -> None:
+    def subscribe(self, topic: Text) -> None:
         self.conn.send({
             'type': 'subscribe',
             'topic': topic
         })
 
-    def unsubscibe(self, topic: Text) -> None:
+    def unsubscribe(self, topic: Text) -> None:
         self.conn.send({
-            'type': 'unsubscibe',
+            'type': 'unsubscribe',
             'topic': topic
         })
 
@@ -97,7 +102,6 @@ class LulaPy_Client:
         self.conn.send({
             'type': 'close'
         })
-        self.conn.close()
 
     def send(self, topic: Text, message: Any) -> None:
         self.conn.send({
@@ -105,6 +109,10 @@ class LulaPy_Client:
             'topic': topic,
             'message': message
         })
+
+    def receive_nowait(self):
+        if self.conn.poll():
+            return self.conn.recv()
 
     def receive(self):
         return self.conn.recv()
