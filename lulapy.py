@@ -36,7 +36,7 @@ def add_connection(data, conn: Connection):
     connections.append(data['conn'])
 
 
-def lulapy_server(conn: Connection) -> None:
+def lulapy_broker(conn: Connection) -> None:
     connections.append(conn)
 
     funcs: Dict[Text, Callable] = {
@@ -67,7 +67,7 @@ def lulapy_server(conn: Connection) -> None:
 
 def begin():
     parent_conn, child_conn = Pipe()
-    broker = Process(target=lulapy_server, args=(parent_conn,))
+    broker = Process(target=lulapy_broker, args=(parent_conn,))
     broker.start()
     while not broker.is_alive():
         pass
